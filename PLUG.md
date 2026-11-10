@@ -98,6 +98,7 @@ const WIDGET_SHELL = '<!DOCTYPE html><html data-theme="light"><head><meta charse
   + '</head><body></body></html>';
 // Widgets get a read-only view of SilverBullet: no writes, no navigation, no UI prompts.
 const BLOCKED_SYSCALLS = /^(space\.(write|delete)|editor\.(replace|set|insert|navigate|open|flash|prompt|confirm|filterBox|save|reload|moveCursor|dispatch))/;
+const PRINT_PIXEL_RATIO = 3;
 const SETTLE_MS = 1500;
 const MAX_WAIT_MS = 10000;
 
@@ -126,6 +127,9 @@ function mountWidget(placeholder, widget) {
         // SilverBullet widget frames only get `syscall`. Plugs (e.g. Excalidraw) check for a
         // `silverbullet` global to detect document-editor frames, so it must stay undefined.
         frameWindow.syscall = (name, ...args) => hostSyscall(name, args);
+        // Canvas-based widgets (Excalidraw) size their bitmap by devicePixelRatio; raise it for print resolution.
+        const printPixelRatio = Math.max(PRINT_PIXEL_RATIO, window.devicePixelRatio || 1);
+        Object.defineProperty(frameWindow, "devicePixelRatio", { get: () => printPixelRatio, configurable: true });
         frameWindow.document.body.innerHTML = widget.html || "";
         if (widget.script) {
           const scriptElement = frameWindow.document.createElement("script");
