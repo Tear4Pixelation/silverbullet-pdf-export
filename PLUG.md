@@ -123,9 +123,9 @@ function mountWidget(placeholder, widget) {
     frame.addEventListener("load", () => {
       if (!widget.url) {
         const frameWindow = frame.contentWindow;
-        const syscall = (name, ...args) => hostSyscall(name, args);
-        frameWindow.syscall = syscall;
-        frameWindow.silverbullet = { syscall, sendMessage() {}, addEventListener() {} };
+        // SilverBullet widget frames only get `syscall`. Plugs (e.g. Excalidraw) check for a
+        // `silverbullet` global to detect document-editor frames, so it must stay undefined.
+        frameWindow.syscall = (name, ...args) => hostSyscall(name, args);
         frameWindow.document.body.innerHTML = widget.html || "";
         if (widget.script) {
           const scriptElement = frameWindow.document.createElement("script");
@@ -176,6 +176,15 @@ async function mountWidgets(root) {
     await new Promise((resolve) => setTimeout(resolve, 250));
   }
   frames.forEach(fitToContent);
+}
+
+// The renderer links each task to its source position ("Page@123"); that's noise on paper.
+function removeTaskReferences(root) {
+  for (const link of Array.from(root.querySelectorAll("li a"))) {
+    const item = link.closest("li");
+    const isTask = item.querySelector('input[type="checkbox"], .sb-task-state, .sb-task');
+    if (isTask && /@\d+$/.test(link.textContent.trim())) link.remove();
+  }
 }
 
 function convertAdmonitions(root) {
@@ -235,6 +244,7 @@ window.addEventListener("load", async () => {
   } catch (error) {
     console.error("PDF export: widget rendering failed", error);
   }
+  removeTaskReferences(document.body);
   convertAdmonitions(document.body);
   if (document.fonts) await document.fonts.ready;
   window.addEventListener("afterprint", () => setTimeout(() => window.frameElement && window.frameElement.remove(), 100));
